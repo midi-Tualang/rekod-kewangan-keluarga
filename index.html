@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rekod Kewangan Keluarga</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --primary: #2c3e50;
+            --accent: #27ae60;
+            --danger: #e74c3c;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 480px; /* Sesuai untuk paparan telefon bimbit */
+            padding: 20px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        h2, h3 { margin-top: 0; }
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button.btn-accent { background-color: var(--accent); }
+        button.btn-danger { background-color: var(--danger); }
+        .hidden { display: none; }
+        
+        /* Gaya Khusus untuk Login */
+        #login-section { text-align: center; margin-top: 50px; }
+        #pin-input { text-align: center; font-size: 24px; letter-spacing: 5px; }
+        
+        /* Gaya Dashboard */
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;}
+        .balance-box { text-align: center; background-color: var(--primary); color: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .balance-box h1 { margin: 10px 0; font-size: 32px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <!-- BAHAGIAN 1: LOG MASUK (PIN) -->
+    <div id="login-section" class="card">
+        <h2>Kewangan Keluarga</h2>
+        <p>Sila masukkan PIN untuk akses</p>
+        <input type="password" id="pin-input" placeholder="••••" maxlength="4">
+        <button onclick="logMasuk()">Log Masuk</button>
+        <p id="login-status" style="color: red;"></p>
+    </div>
+
+    <!-- BAHAGIAN 2: PAPARAN DASHBOARD (Disembunyikan pada asalnya) -->
+    <div id="dashboard-section" class="hidden">
+        <div class="header">
+            <h3 id="user-role">Profil: Pengguna</h3>
+            <button onclick="logKeluar()" style="width: auto; padding: 8px 12px; background: #95a5a6;">Log Keluar</button>
+        </div>
+
+        <div class="balance-box">
+            <p style="margin:0; opacity: 0.8;">Baki Kewangan Semasa</p>
+            <h1 id="baki-semasa">RM 0.00</h1>
+        </div>
+
+        <!-- Kad Dana & Tabungan (Bergantung pada Role) -->
+        <div class="card">
+            <h3>Status Dana Terkumpul</h3>
+            <ul style="list-style: none; padding: 0; line-height: 1.8;" id="senarai-dana">
+                <!-- Data akan dimasukkan oleh JavaScript -->
+            </ul>
+        </div>
+
+        <!-- Butang Tindakan Pengguna Biasa -->
+        <div id="tindakan-user" class="card hidden">
+            <h3>Rekod Transaksi</h3>
+            <button class="btn-accent" onclick="bukaModal('Bayar Hutang', 500)">+ Bayar Hutang (RM500)</button>
+            <button onclick="alert('Borang tambah pendapatan/perbelanjaan akan dibuka')">Catat Perbelanjaan / Pendapatan</button>
+        </div>
+
+        <!-- Butang Tindakan Admin (Abah) -->
+        <div id="tindakan-admin" class="card hidden">
+            <h3>Panel Kawalan Abah</h3>
+            <button class="btn-danger" onclick="alert('Borang pengeluaran dana akan dibuka')">- Rekod Pengeluaran Dana</button>
+            <button onclick="alert('Fungsi cetak dan reset akan dijalankan')">Urus Sistem & Cetak PDF</button>
+        </div>
+        
+    </div>
+
+</div>
+
+<script>
+    // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbybsw0VFwZhmtzDF9sYae9KYkdUROpgV5JyKMWnJLjXhFiW4myZ_l1Q8UadnXcBvnw/exec"; 
+    
+    let pinSemasa = "";
+
+    function logMasuk() {
+        const pin = document.getElementById('pin-input').value;
+        const statusText = document.getElementById('login-status');
+        
+        if(pin.length < 4) {
+            statusText.innerText = "Sila masukkan 4 digit PIN.";
+            return;
+        }
+
+        statusText.innerText = "Memeriksa akses...";
+        
+        // Panggil data dari GAS (Fungsi doGet)
+        fetch(`${GAS_URL}?pin=${pin}&action=getData`)
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === "SUCCESS") {
+                    pinSemasa = pin;
+                    paparDashboard(data);
+                } else {
+                    statusText.innerText = "PIN Salah. Cuba lagi.";
+                }
+            })
+            .catch(error => {
+                statusText.innerText = "Ralat sambungan. Pastikan URL betul.";
+            });
+    }
+
+    function paparDashboard(data) {
+        // Sembunyikan Login, Papar Dashboard
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('dashboard-section').classList.remove('hidden');
+        
+        // Tetapkan Profil
+        const peranan = data.peranan; // 'ADMIN' atau 'USER'
+        document.getElementById('user-role').innerText = peranan === "ADMIN" ? "👑 Panel Kawalan Abah" : "👤 Hasif & Fatini";
+        
+        // Masukkan Data Baki Semasa
+        document.getElementById('baki-semasa').innerText = "RM " + (data.ringkasan["Baki Semasa"] || "0.00");
+
+        // Masukkan Data Tabung
+        const senaraiDana = document.getElementById('senarai-dana');
+        senaraiDana.innerHTML = `
+            <li>🚗 Servis Veloz: <b>RM ${data.ringkasan["Dana Servis Veloz"] || 0}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
+            <li>🚗 Servis Persona: <b>RM ${data.ringkasan["Dana Servis Persona"] || 0}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
+            <li>📄 Roadtax Veloz: <b>RM ${data.ringkasan["Dana Roadtax Veloz"] || 0}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
+            <li>📄 Roadtax Persona: <b>RM ${data.ringkasan["Dana Roadtax Persona"] || 0}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
+            <li style="color: var(--accent); font-size: 18px; margin-top: 10px;">💰 <b>Tabungan Masa Depan: RM ${data.ringkasan["Tabungan Masa Depan"] || 0}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
+        `;
+
+        // Tunjukkan panel kawalan mengikut peranan
+        if(peranan === "ADMIN") {
+            document.getElementById('tindakan-admin').classList.remove('hidden');
+        } else {
+            document.getElementById('tindakan-user').classList.remove('hidden');
+        }
+    }
+
+    function logKeluar() {
+        pinSemasa = "";
+        document.getElementById('pin-input').value = "";
+        document.getElementById('login-status').innerText = "";
+        document.getElementById('dashboard-section').classList.add('hidden');
+        document.getElementById('login-section').classList.remove('hidden');
+        
+        // Sembunyikan semula panel tindakan
+        document.getElementById('tindakan-admin').classList.add('hidden');
+        document.getElementById('tindakan-user').classList.add('hidden');
+    }
+</script>
+
+</body>
+</html>
