@@ -123,6 +123,7 @@
 
         <div id="tindakan-user" class="card hidden">
             <h3 style="margin-bottom: 15px;">Tindakan Pantas</h3>
+            <button onclick="bukaModalKategori()" style="background-color: #f39c12; margin-bottom: 15px;">⚙️ Urus Kategori Perbelanjaan</button>
             <button class="btn-accent" onclick="bukaModalTransaksi('Bayar Hutang')">+ Bayar Hutang (RM500)</button>
             <button onclick="bukaModalTransaksi('Perbelanjaan')">Catat Perbelanjaan / Pendapatan</button>
         </div>
@@ -180,6 +181,25 @@
         <p id="status-hantar" style="text-align:center; font-size:14px; margin-top:10px;"></p>
     </div>
 </div>    
+
+<div id="modal-kategori" class="modal hidden">
+    <div class="modal-content">
+        <button class="close-btn" onclick="tutupModalKategori()">✖ Tutup</button>
+        <h3>Urus Kategori Bajet</h3>
+        
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <h4 style="margin-top:0; color: var(--primary);">+ Cipta Kategori Baharu</h4>
+            <input type="text" id="kat-baru-nama" placeholder="Nama Kategori (Contoh: Dapur)">
+            <input type="number" id="kat-baru-had" placeholder="Had Bulanan (RM)">
+            <button class="btn-accent" onclick="prosesTambahKategori()" id="btn-tambah-kat">Simpan Kategori</button>
+        </div>
+        
+        <h4 style="margin-bottom: 5px;">Senarai Kategori Semasa</h4>
+        <div id="senarai-urus-kategori" style="max-height: 250px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; padding: 5px;">
+            </div>
+        <p id="status-kategori" style="text-align:center; font-size:14px; margin-top:10px;"></p>
+    </div>
+</div>
 
 <script>
     // URL WEB APP GAS
@@ -247,10 +267,8 @@
 
         // 2. Kira dan Papar Bar Kemajuan Kategori
         let belanjaKategori = {};
-        // Tetapkan nilai 0 untuk setiap kategori pada awalnya
         senaraiKategoriGlobal.forEach(k => { belanjaKategori[k.nama] = 0; });
         
-        // Campurkan jumlah perbelanjaan dari transaksi terkini
         sejarahTransaksi.forEach(t => {
             if (t.jenis === "Perbelanjaan" && belanjaKategori[t.kategori] !== undefined) {
                 belanjaKategori[t.kategori] += parseFloat(t.jumlah);
@@ -265,11 +283,11 @@
                 let had = parseFloat(kat.had);
                 let telahBelanja = belanjaKategori[kat.nama];
                 let peratus = had > 0 ? (telahBelanja / had) * 100 : 0;
-                let warnaKelas = "bg-green"; // Default cermat
+                let warnaKelas = "bg-green"; 
                 
                 if (peratus >= 100) {
                     warnaKelas = "bg-red";
-                    peratus = 100; // Hadkan visual bar pada 100% supaya tak pecah kotak
+                    peratus = 100; 
                 } else if (peratus >= 75) {
                     warnaKelas = "bg-yellow";
                 }
@@ -409,7 +427,6 @@
                 setTimeout(() => {
                     tutupModal();
                     document.getElementById('btn-hantar').disabled = false;
-                    // Auto-refresh data dari server untuk kemas kini graf dan senarai
                     logMasuk();
                 }, 1500);
             } else {
@@ -423,6 +440,99 @@
             statusText.style.color = "red";
             document.getElementById('btn-hantar').disabled = false;
         });
+    }
+
+    // --- FUNGSI PENGURUSAN KATEGORI (DIMASUKKAN DI SINI) ---
+    function bukaModalKategori() {
+        document.getElementById('modal-kategori').classList.remove('hidden');
+        document.getElementById('status-kategori').innerText = "";
+        susunSenaraiKategori();
+    }
+
+    function tutupModalKategori() {
+        document.getElementById('modal-kategori').classList.add('hidden');
+    }
+
+    function susunSenaraiKategori() {
+        let html = "";
+        if (senaraiKategoriGlobal.length === 0) {
+            html = "<p style='text-align:center; color:#7f8c8d; font-size:14px;'>Tiada kategori dijumpai.</p>";
+        } else {
+            senaraiKategoriGlobal.forEach(kat => {
+                html += `
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:10px 5px;">
+                    <div style="line-height:1.4;">
+                        <b>${kat.nama}</b><br>
+                        <span style="font-size:13px; color:#7f8c8d;">Had: RM ${parseFloat(kat.had).toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex; gap:5px;">
+                        <button onclick="prosesEditKategori('${kat.id}', '${kat.nama}', '${kat.had}')" style="background:#3498db; width:auto; padding:6px 10px; font-size:12px; margin:0;">Edit</button>
+                        <button onclick="prosesPadamKategori('${kat.id}')" style="background:var(--danger); width:auto; padding:6px 10px; font-size:12px; margin:0;">Padam</button>
+                    </div>
+                </div>`;
+            });
+        }
+        document.getElementById('senarai-urus-kategori').innerHTML = html;
+    }
+
+    function hantarArahanKategori(dataHantar, butangId) {
+        const statusText = document.getElementById('status-kategori');
+        statusText.innerText = "Sedang diproses...";
+        statusText.style.color = "blue";
+        if(butangId) document.getElementById(butangId).disabled = true;
+
+        fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify(dataHantar),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === "SUCCESS") {
+                statusText.innerText = data.message;
+                statusText.style.color = "green";
+                document.getElementById('kat-baru-nama').value = "";
+                document.getElementById('kat-baru-had').value = "";
+                // Refresh data dari server untuk kemas kini UI
+                setTimeout(() => { logMasuk(); }, 1000); 
+            } else {
+                statusText.innerText = "Ralat: " + data.message;
+                statusText.style.color = "red";
+            }
+            if(butangId) document.getElementById(butangId).disabled = false;
+        })
+        .catch(error => {
+            statusText.innerText = "Gagal berhubung dengan pelayan.";
+            statusText.style.color = "red";
+            if(butangId) document.getElementById(butangId).disabled = false;
+        });
+    }
+
+    function prosesTambahKategori() {
+        const nama = document.getElementById('kat-baru-nama').value;
+        const had = parseFloat(document.getElementById('kat-baru-had').value);
+        if(!nama || !had || had <= 0) {
+            document.getElementById('status-kategori').innerText = "Sila lengkapkan nama dan had bulanan!";
+            document.getElementById('status-kategori').style.color = "red";
+            return;
+        }
+        hantarArahanKategori({ action: "tambahKategori", pin: pinSemasa, namaKategori: nama, had: had }, "btn-tambah-kat");
+    }
+
+    function prosesEditKategori(id, namaAsal, hadAsal) {
+        let namaBaru = prompt("Ubah Nama Kategori:", namaAsal);
+        if (namaBaru === null || namaBaru.trim() === "") return;
+        
+        let hadBaru = prompt("Ubah Had Bulanan (RM):", parseFloat(hadAsal).toFixed(2));
+        if (hadBaru === null || parseFloat(hadBaru) <= 0 || isNaN(hadBaru)) return;
+
+        hantarArahanKategori({ action: "editKategori", pin: pinSemasa, idKategori: id, namaKategori: namaBaru, had: parseFloat(hadBaru) }, null);
+    }
+
+    function prosesPadamKategori(id) {
+        if (confirm("Adakah anda pasti mahu memadamkan kategori ini?")) {
+            hantarArahanKategori({ action: "padamKategori", pin: pinSemasa, idKategori: id }, null);
+        }
     }
 </script>
 
