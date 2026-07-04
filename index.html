@@ -250,7 +250,11 @@
         if (jenis === "Bayar Hutang") {
             selectKategori.innerHTML = '<option value="Kepada Abah">Kepada Abah</option>';
         } else if (jenis === "Pendapatan") {
-            selectKategori.innerHTML = '<option value="Gaji">Gaji</option><option value="Lain-lain">Lain-lain</option>';
+            selectKategori.innerHTML = `
+                <option value="Pendapatan Hasif">Pendapatan Hasif</option>
+                <option value="Pendapatan Fatini">Pendapatan Fatini</option>
+                <option value="Lain-lain">Lain-lain</option>
+            `;
         } else {
             if(senaraiKategoriGlobal.length > 0) {
                 senaraiKategoriGlobal.forEach(kat => {
