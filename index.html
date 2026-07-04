@@ -192,15 +192,16 @@
         const peranan = data.peranan;
         document.getElementById('user-role').innerText = peranan === "ADMIN" ? "👑 Panel Kawalan Abah" : "👤 Hasif & Fatini";
         
-        document.getElementById('baki-semasa').innerText = "RM " + (data.ringkasan["Baki Semasa"] || "0.00");
+        // .toFixed(2) digunakan untuk menggenapkan angka kepada 2 tempat perpuluhan (sen)
+        document.getElementById('baki-semasa').innerText = "RM " + parseFloat(data.ringkasan["Baki Semasa"] || 0).toFixed(2);
 
         const senaraiDana = document.getElementById('senarai-dana');
         senaraiDana.innerHTML = `
-            <li>🚗 Servis Veloz: <b>RM ${data.ringkasan["Dana Servis Veloz"] || 0}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
-            <li>🚗 Servis Persona: <b>RM ${data.ringkasan["Dana Servis Persona"] || 0}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
-            <li>📄 Roadtax Veloz: <b>RM ${data.ringkasan["Dana Roadtax Veloz"] || 0}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
-            <li>📄 Roadtax Persona: <b>RM ${data.ringkasan["Dana Roadtax Persona"] || 0}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
-            <li style="color: var(--accent); font-size: 18px; margin-top: 10px;">💰 <b>Tabungan Masa Depan: RM ${data.ringkasan["Tabungan Masa Depan"] || 0}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
+            <li>🚗 Servis Veloz: <b>RM ${parseFloat(data.ringkasan["Dana Servis Veloz"] || 0).toFixed(2)}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
+            <li>🚗 Servis Persona: <b>RM ${parseFloat(data.ringkasan["Dana Servis Persona"] || 0).toFixed(2)}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
+            <li>📄 Roadtax Veloz: <b>RM ${parseFloat(data.ringkasan["Dana Roadtax Veloz"] || 0).toFixed(2)}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
+            <li>📄 Roadtax Persona: <b>RM ${parseFloat(data.ringkasan["Dana Roadtax Persona"] || 0).toFixed(2)}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
+            <li style="color: var(--accent); font-size: 18px; margin-top: 10px;">💰 <b>Tabungan Masa Depan: RM ${parseFloat(data.ringkasan["Tabungan Masa Depan"] || 0).toFixed(2)}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
         `;
 
         if(peranan === "ADMIN") {
