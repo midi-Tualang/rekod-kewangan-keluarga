@@ -12,6 +12,7 @@
             --primary: #2c3e50;
             --accent: #27ae60;
             --danger: #e74c3c;
+            --warning: #f1c40f;
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -74,12 +75,27 @@
             padding: 20px; border-radius: 12px;
             width: 90%; max-width: 400px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            max-height: 90vh; overflow-y: auto;
         }
         .close-btn {
             background-color: transparent; color: var(--danger);
             border: none; text-align: right; padding: 0;
             font-size: 16px; margin-bottom: 10px; font-weight: bold;
         }
+
+        /* Gaya Bar Kemajuan (Progress Bar) & Transaksi */
+        .progress-container { width: 100%; background-color: #ecf0f1; border-radius: 8px; margin-top: 5px; overflow: hidden; height: 12px; }
+        .progress-bar { height: 100%; border-radius: 8px; transition: width 0.4s ease; }
+        .bg-green { background-color: var(--accent); }
+        .bg-yellow { background-color: var(--warning); }
+        .bg-red { background-color: var(--danger); }
+        
+        .transaksi-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center;}
+        .transaksi-item:last-child { border-bottom: none; }
+        .text-danger { color: var(--danger); font-weight: bold; }
+        .text-success { color: var(--accent); font-weight: bold; }
+        .text-primary { color: var(--primary); font-weight: bold; }
+        .transaksi-detail { font-size: 12px; color: #7f8c8d; margin-top: 2px; }
     </style>
 </head>
 <body>
@@ -105,23 +121,36 @@
             <h1 id="baki-semasa">RM 0.00</h1>
         </div>
 
+        <div id="tindakan-user" class="card hidden">
+            <h3 style="margin-bottom: 15px;">Tindakan Pantas</h3>
+            <button class="btn-accent" onclick="bukaModalTransaksi('Bayar Hutang')">+ Bayar Hutang (RM500)</button>
+            <button onclick="bukaModalTransaksi('Perbelanjaan')">Catat Perbelanjaan / Pendapatan</button>
+        </div>
+
+        <div id="tindakan-admin" class="card hidden">
+            <h3 style="margin-bottom: 15px;">Panel Kawalan Abah</h3>
+            <button class="btn-danger" onclick="alert('Borang pengeluaran dana akan dibuka')">- Rekod Pengeluaran Dana</button>
+            <button onclick="alert('Fungsi cetak dan reset akan dijalankan')">Urus Sistem & Cetak PDF</button>
+        </div>
+
         <div class="card">
             <h3>Status Dana Terkumpul</h3>
             <ul style="list-style: none; padding: 0; line-height: 1.8;" id="senarai-dana">
                 </ul>
         </div>
 
-        <div id="tindakan-user" class="card hidden">
-            <h3>Rekod Transaksi</h3>
-            <button class="btn-accent" onclick="bukaModalTransaksi('Bayar Hutang')">+ Bayar Hutang (RM500)</button>
-            <button onclick="bukaModalTransaksi('Perbelanjaan')">Catat Perbelanjaan / Pendapatan</button>
+        <div class="card">
+            <h3>Status Bajet Kategori</h3>
+            <div id="senarai-bajet">
+                </div>
         </div>
 
-        <div id="tindakan-admin" class="card hidden">
-            <h3>Panel Kawalan Abah</h3>
-            <button class="btn-danger" onclick="alert('Borang pengeluaran dana akan dibuka')">- Rekod Pengeluaran Dana</button>
-            <button onclick="alert('Fungsi cetak dan reset akan dijalankan')">Urus Sistem & Cetak PDF</button>
+        <div class="card">
+            <h3>Transaksi Terkini</h3>
+            <div id="senarai-transaksi">
+                </div>
         </div>
+        
     </div>
 </div>
 
@@ -157,7 +186,7 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbybsw0VFwZhmtzDF9sYae9KYkdUROpgV5JyKMWnJLjXhFiW4myZ_l1Q8UadnXcBvnw/exec"; 
     
     let pinSemasa = "";
-    let senaraiKategoriGlobal = []; // Simpan sementara kategori dari GAS
+    let senaraiKategoriGlobal = [];
 
     function logMasuk() {
         const pin = document.getElementById('pin-input').value;
@@ -192,9 +221,9 @@
         const peranan = data.peranan;
         document.getElementById('user-role').innerText = peranan === "ADMIN" ? "👑 Panel Kawalan Abah" : "👤 Hasif & Fatini";
         
-        // .toFixed(2) digunakan untuk menggenapkan angka kepada 2 tempat perpuluhan (sen)
         document.getElementById('baki-semasa').innerText = "RM " + parseFloat(data.ringkasan["Baki Semasa"] || 0).toFixed(2);
 
+        // 1. Papar Dana
         const senaraiDana = document.getElementById('senarai-dana');
         senaraiDana.innerHTML = `
             <li>🚗 Servis Veloz: <b>RM ${parseFloat(data.ringkasan["Dana Servis Veloz"] || 0).toFixed(2)}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
@@ -204,13 +233,88 @@
             <li style="color: var(--accent); font-size: 18px; margin-top: 10px;">💰 <b>Tabungan Masa Depan: RM ${parseFloat(data.ringkasan["Tabungan Masa Depan"] || 0).toFixed(2)}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
         `;
 
+        // Susun akses panel
         if(peranan === "ADMIN") {
             document.getElementById('tindakan-admin').classList.remove('hidden');
+            document.getElementById('tindakan-user').classList.add('hidden');
         } else {
             document.getElementById('tindakan-user').classList.remove('hidden');
+            document.getElementById('tindakan-admin').classList.add('hidden');
         }
 
         senaraiKategoriGlobal = data.kategori || [];
+        const sejarahTransaksi = data.transaksi || [];
+
+        // 2. Kira dan Papar Bar Kemajuan Kategori
+        let belanjaKategori = {};
+        // Tetapkan nilai 0 untuk setiap kategori pada awalnya
+        senaraiKategoriGlobal.forEach(k => { belanjaKategori[k.nama] = 0; });
+        
+        // Campurkan jumlah perbelanjaan dari transaksi terkini
+        sejarahTransaksi.forEach(t => {
+            if (t.jenis === "Perbelanjaan" && belanjaKategori[t.kategori] !== undefined) {
+                belanjaKategori[t.kategori] += parseFloat(t.jumlah);
+            }
+        });
+
+        let htmlBajet = "";
+        if(senaraiKategoriGlobal.length === 0) {
+            htmlBajet = "<p style='color:#7f8c8d; font-size: 14px;'>Tiada kategori ditetapkan.</p>";
+        } else {
+            senaraiKategoriGlobal.forEach(kat => {
+                let had = parseFloat(kat.had);
+                let telahBelanja = belanjaKategori[kat.nama];
+                let peratus = had > 0 ? (telahBelanja / had) * 100 : 0;
+                let warnaKelas = "bg-green"; // Default cermat
+                
+                if (peratus >= 100) {
+                    warnaKelas = "bg-red";
+                    peratus = 100; // Hadkan visual bar pada 100% supaya tak pecah kotak
+                } else if (peratus >= 75) {
+                    warnaKelas = "bg-yellow";
+                }
+
+                htmlBajet += `
+                    <div style="margin-bottom: 18px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 4px;">
+                            <b>${kat.nama}</b>
+                            <span>RM ${telahBelanja.toFixed(2)} / <span style="color:#7f8c8d;">RM ${had.toFixed(2)}</span></span>
+                        </div>
+                        <div class="progress-container">
+                            <div class="progress-bar ${warnaKelas}" style="width: ${peratus}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        document.getElementById('senarai-bajet').innerHTML = htmlBajet;
+
+        // 3. Papar Senarai Transaksi Terkini
+        let htmlTransaksi = "";
+        if (sejarahTransaksi.length === 0) {
+            htmlTransaksi = "<p style='text-align:center; color:#7f8c8d; font-size:14px;'>Belum ada rekod transaksi.</p>";
+        } else {
+            sejarahTransaksi.forEach(t => {
+                let warna = "text-primary";
+                let simbol = "";
+                
+                if (t.jenis === "Pendapatan") { warna = "text-success"; simbol = "+"; } 
+                else if (t.jenis === "Perbelanjaan") { warna = "text-danger"; simbol = "-"; }
+                
+                htmlTransaksi += `
+                    <div class="transaksi-item">
+                        <div>
+                            <div style="font-weight:bold; font-size: 14px;">${t.kategori}</div>
+                            <div class="transaksi-detail">${t.tarikh} • ${t.nota || 'Tiada nota'}</div>
+                        </div>
+                        <div class="${warna}">
+                            ${simbol}RM ${parseFloat(t.jumlah).toFixed(2)}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        document.getElementById('senarai-transaksi').innerHTML = htmlTransaksi;
     }
 
     function logKeluar() {
@@ -223,7 +327,6 @@
         document.getElementById('tindakan-user').classList.add('hidden');
     }
 
-    // --- FUNGSI MENGURUS BORANG POP-UP ---
     function bukaModalTransaksi(jenisDefault) {
         document.getElementById('modal-transaksi').classList.remove('hidden');
         document.getElementById('input-jenis').value = jenisDefault;
@@ -267,7 +370,6 @@
         }
     }
 
-    // --- FUNGSI MENGHANTAR DATA KE GOOGLE SHEETS ---
     function hantarDataTransaksi() {
         const jenis = document.getElementById('input-jenis').value;
         const kategori = document.getElementById('input-kategori').value;
@@ -297,7 +399,6 @@
         fetch(GAS_URL, {
             method: "POST",
             body: JSON.stringify(dataHantar),
-            // 'text/plain' mengelakkan isu CORS Preflight pada pelayan Google
             headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         })
         .then(response => response.json())
@@ -308,7 +409,7 @@
                 setTimeout(() => {
                     tutupModal();
                     document.getElementById('btn-hantar').disabled = false;
-                    // Auto-refresh data dari server
+                    // Auto-refresh data dari server untuk kemas kini graf dan senarai
                     logMasuk();
                 }, 1500);
             } else {
