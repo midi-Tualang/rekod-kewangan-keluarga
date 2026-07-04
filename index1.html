@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rekod Dana Keluarga</title>
+    <style>
+        :root {
+            --bg-color: #eef2f5;
+            --card-bg: #ffffff;
+            --text-main: #2c3e50;
+            --primary: #34495e;
+            --accent: #27ae60;
+            --danger: #e74c3c;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 450px;
+            padding: 15px;
+            animation: fadeIn 0.6s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+        h2, h3 { margin-top: 0; color: #1a252f; }
+        input, button {
+            width: 100%;
+            padding: 14px;
+            margin: 8px 0;
+            border-radius: 10px;
+            border: 1px solid #dcdde1;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 5px rgba(52, 73, 94, 0.3);
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        button.btn-accent { background-color: var(--accent); }
+        button.btn-danger { background-color: var(--danger); }
+        .hidden { display: none !important; }
+        
+        #login-section { text-align: center; margin-top: 40px; }
+        #pin-input { text-align: center; font-size: 28px; letter-spacing: 8px; font-weight: bold; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f2f6; padding-bottom: 15px; margin-bottom: 25px;}
+        .balance-box { text-align: center; background: linear-gradient(135deg, #2c3e50, #34495e); color: white; border-radius: 16px; padding: 25px; margin-bottom: 20px; box-shadow: 0 10px 20px rgba(44, 62, 80, 0.2); }
+        .balance-box h1 { margin: 10px 0 0 0; font-size: 36px; color: #2ecc71; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        
+        /* Gaya Pop-up (Modal) */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: var(--card-bg);
+            padding: 25px; border-radius: 16px;
+            width: 90%; max-width: 400px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .close-btn {
+            background-color: transparent; color: var(--danger);
+            border: none; text-align: right; padding: 0;
+            font-size: 16px; margin-bottom: 15px; font-weight: bold;
+        }
+
+        .transaksi-item { border-bottom: 1px solid #f1f2f6; padding: 15px 0; display: flex; justify-content: space-between; align-items: center;}
+        .transaksi-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .text-accent { color: var(--accent); font-weight: bold; font-size: 16px; }
+        .transaksi-detail { font-size: 13px; color: #7f8c8d; margin-top: 4px; }
+        .senarai-dana-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed #eee; }
+        .senarai-dana-item:last-child { border-bottom: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div id="login-section" class="card">
+        <h2 style="margin-bottom: 5px;">Rekod Dana Keluarga</h2>
+        <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 20px;">Sila masukkan PIN untuk akses</p>
+        <input type="password" id="pin-input" placeholder="••••" maxlength="4" pattern="[0-9]*" inputmode="numeric">
+        <button onclick="logMasuk()" style="margin-top: 15px;">Log Masuk</button>
+        <p id="login-status" style="color: var(--danger); font-size: 14px; margin-top: 15px;"></p>
+    </div>
+
+    <div id="dashboard-section" class="hidden">
+        <div class="header">
+            <h3 id="user-role" style="margin:0; font-size: 16px;">Profil: Pengguna</h3>
+            <button onclick="logKeluar()" style="width: auto; padding: 8px 16px; background: #95a5a6; border-radius: 20px; font-size: 13px;">Log Keluar</button>
+        </div>
+
+        <div class="balance-box">
+            <p style="margin:0; opacity: 0.8; font-size: 14px; letter-spacing: 0.5px;">JUMLAH DANA TERKUMPUL</p>
+            <h1 id="total-dana">RM 0.00</h1>
+        </div>
+
+        <div id="tindakan-user" class="card hidden">
+            <button class="btn-accent" onclick="bukaModalBayar()" style="padding: 16px; font-size: 16px; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3);">+ Masukkan Bayaran (RM 500)</button>
+        </div>
+
+        <div id="tindakan-admin" class="card hidden">
+            <h3 style="margin-bottom: 15px; font-size: 16px;">Panel Kawalan Abah</h3>
+            <button class="btn-danger" onclick="alert('Ciri borang pengeluaran akan datang')">- Rekod Pengeluaran Dana</button>
+            <button onclick="alert('Fungsi cetak PDF akan datang')">Cetak Laporan PDF</button>
+        </div>
+
+        <div class="card">
+            <h3 style="font-size: 16px; margin-bottom: 15px;">Pecahan Dana Terkumpul</h3>
+            <div id="senarai-dana">
+                </div>
+        </div>
+
+        <div class="card">
+            <h3 style="font-size: 16px; margin-bottom: 15px;">Sejarah Bayaran Terkini</h3>
+            <div id="senarai-transaksi">
+                </div>
+        </div>
+        
+    </div>
+</div>
+
+<div id="modal-bayar" class="modal hidden">
+    <div class="modal-content">
+        <button class="close-btn" onclick="tutupModalBayar()">✖ Batal</button>
+        <h3 style="color: var(--primary); margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px;">Pengesahan Bayaran</h3>
+        
+        <label style="font-size: 14px; font-weight: 600; color: #34495e;">Jumlah Bayaran (RM):</label>
+        <input type="number" id="input-jumlah" value="500.00" step="0.01">
+
+        <label style="font-size: 14px; font-weight: 600; color: #34495e; display:block; margin-top:10px;">Catatan / Nota Bulan:</label>
+        <input type="text" id="input-nota" value="Bayaran bulanan">
+
+        <button class="btn-accent" onclick="hantarBayaran()" id="btn-hantar" style="margin-top: 20px; padding: 15px;">Sahkan Bayaran</button>
+        <p id="status-hantar" style="text-align:center; font-size:14px; margin-top:10px; font-weight: 600;"></p>
+    </div>
+</div>    
+
+<script>
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbybsw0VFwZhmtzDF9sYae9KYkdUROpgV5JyKMWnJLjXhFiW4myZ_l1Q8UadnXcBvnw/exec"; 
+    let pinSemasa = "";
+
+    function logMasuk() {
+        const pin = document.getElementById('pin-input').value;
+        const statusText = document.getElementById('login-status');
+        
+        if(pin.length < 4) {
+            statusText.innerText = "Sila masukkan 4 digit PIN.";
+            return;
+        }
+        statusText.style.color = "var(--primary)";
+        statusText.innerText = "Memeriksa akses pangkalan data...";
+        
+        fetch(`${GAS_URL}?pin=${pin}&action=getData`)
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === "SUCCESS") {
+                    pinSemasa = pin;
+                    paparDashboard(data);
+                } else {
+                    statusText.style.color = "var(--danger)";
+                    statusText.innerText = "PIN Salah. Sila cuba lagi.";
+                }
+            })
+            .catch(error => {
+                statusText.style.color = "var(--danger)";
+                statusText.innerText = "Ralat sambungan internet.";
+            });
+    }
+
+    function paparDashboard(data) {
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('dashboard-section').classList.remove('hidden');
+        
+        const peranan = data.peranan;
+        document.getElementById('user-role').innerHTML = peranan === "ADMIN" ? "👑 <b>Panel Abah</b>" : "👤 <b>Hasif & Fatini</b>";
+        
+        const dVelozS = parseFloat(data.ringkasan["Dana Servis Veloz"] || 0);
+        const dPersonaS = parseFloat(data.ringkasan["Dana Servis Persona"] || 0);
+        const dVelozR = parseFloat(data.ringkasan["Dana Roadtax Veloz"] || 0);
+        const dPersonaR = parseFloat(data.ringkasan["Dana Roadtax Persona"] || 0);
+        const dTabungan = parseFloat(data.ringkasan["Tabungan Masa Depan"] || 0);
+
+        const totalDana = dVelozS + dPersonaS + dVelozR + dPersonaR + dTabungan;
+        document.getElementById('total-dana').innerText = "RM " + totalDana.toFixed(2);
+
+        const kunci = peranan === 'USER' ? '<span style="font-size:12px;">🔒</span>' : '';
+        document.getElementById('senarai-dana').innerHTML = `
+            <div class="senarai-dana-item"><span>🚗 Servis Veloz</span> <b>RM ${dVelozS.toFixed(2)} ${kunci}</b></div>
+            <div class="senarai-dana-item"><span>🚗 Servis Persona</span> <b>RM ${dPersonaS.toFixed(2)} ${kunci}</b></div>
+            <div class="senarai-dana-item"><span>📄 Roadtax Veloz</span> <b>RM ${dVelozR.toFixed(2)} ${kunci}</b></div>
+            <div class="senarai-dana-item"><span>📄 Roadtax Persona</span> <b>RM ${dPersonaR.toFixed(2)} ${kunci}</b></div>
+            <div class="senarai-dana-item" style="margin-top: 15px; border-top: 2px solid #f1f2f6; padding-top: 15px;">
+                <span style="color: var(--accent); font-weight: bold; font-size:16px;">💰 Tabungan Masa Depan</span> 
+                <b style="color: var(--accent); font-size:16px;">RM ${dTabungan.toFixed(2)} ${kunci}</b>
+            </div>
+        `;
+
+        if(peranan === "ADMIN") {
+            document.getElementById('tindakan-admin').classList.remove('hidden');
+            document.getElementById('tindakan-user').classList.add('hidden');
+        } else {
+            document.getElementById('tindakan-user').classList.remove('hidden');
+            document.getElementById('tindakan-admin').classList.add('hidden');
+        }
+
+        const sejarahTransaksi = data.transaksi || [];
+        let htmlTransaksi = "";
+        let adaRekod = false;
+
+        sejarahTransaksi.forEach(t => {
+            if (t.jenis === "Bayar Hutang") {
+                adaRekod = true;
+                htmlTransaksi += `
+                    <div class="transaksi-item">
+                        <div>
+                            <div style="font-weight:bold; font-size: 15px; color:#2c3e50;">Kemasukan Dana</div>
+                            <div class="transaksi-detail">${t.tarikh} • ${t.nota || ''}</div>
+                        </div>
+                        <div class="text-accent">+ RM ${parseFloat(t.jumlah).toFixed(2)}</div>
+                    </div>
+                `;
+            }
+        });
+
+        if (!adaRekod) {
+            htmlTransaksi = "<p style='text-align:center; color:#95a5a6; font-size:14px; margin-top:20px;'>Belum ada rekod bayaran.</p>";
+        }
+        document.getElementById('senarai-transaksi').innerHTML = htmlTransaksi;
+    }
+
+    function logKeluar() {
+        pinSemasa = "";
+        document.getElementById('pin-input').value = "";
+        document.getElementById('login-status').innerText = "";
+        document.getElementById('dashboard-section').classList.add('hidden');
+        document.getElementById('login-section').classList.remove('hidden');
+    }
+
+    function bukaModalBayar() {
+        document.getElementById('modal-bayar').classList.remove('hidden');
+        document.getElementById('status-hantar').innerText = "";
+        document.getElementById('input-jumlah').value = "500.00";
+        document.getElementById('input-nota').value = "Bayaran bulanan";
+    }
+
+    function tutupModalBayar() {
+        document.getElementById('modal-bayar').classList.add('hidden');
+    }
+
+    function hantarBayaran() {
+        const jumlah = parseFloat(document.getElementById('input-jumlah').value);
+        const nota = document.getElementById('input-nota').value;
+        const statusText = document.getElementById('status-hantar');
+
+        if (!jumlah || jumlah <= 0) {
+            statusText.innerText = "Sila pastikan jumlah sah!";
+            statusText.style.color = "var(--danger)";
+            return;
+        }
+
+        statusText.innerText = "Sedang merekod bayaran...";
+        statusText.style.color = "var(--primary)";
+        document.getElementById('btn-hantar').disabled = true;
+
+        const dataHantar = {
+            action: "tambahTransaksi",
+            pin: pinSemasa,
+            jenis: "Bayar Hutang",
+            kategori: "Kepada Abah",
+            jumlah: jumlah,
+            nota: nota
+        };
+
+        fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify(dataHantar),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === "SUCCESS") {
+                statusText.innerText = "✓ Bayaran berjaya direkodkan!";
+                statusText.style.color = "var(--accent)";
+                setTimeout(() => {
+                    tutupModalBayar();
+                    document.getElementById('btn-hantar').disabled = false;
+                    logMasuk();
+                }, 1500);
+            } else {
+                statusText.innerText = "Ralat: " + data.message;
+                statusText.style.color = "var(--danger)";
+                document.getElementById('btn-hantar').disabled = false;
+            }
+        })
+        .catch(error => {
+            statusText.innerText = "Gagal berhubung dengan pelayan.";
+            statusText.style.color = "var(--danger)";
+            document.getElementById('btn-hantar').disabled = false;
+        });
+    }
+</script>
+
+</body>
+</html>
