@@ -24,7 +24,7 @@
         }
         .container {
             width: 100%;
-            max-width: 480px; /* Sesuai untuk paparan telefon bimbit */
+            max-width: 480px;
             padding: 20px;
         }
         .card {
@@ -55,21 +55,37 @@
         button.btn-danger { background-color: var(--danger); }
         .hidden { display: none; }
         
-        /* Gaya Khusus untuk Login */
         #login-section { text-align: center; margin-top: 50px; }
         #pin-input { text-align: center; font-size: 24px; letter-spacing: 5px; }
         
-        /* Gaya Dashboard */
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;}
         .balance-box { text-align: center; background-color: var(--primary); color: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
         .balance-box h1 { margin: 10px 0; font-size: 32px; }
+        
+        /* Gaya Pop-up (Modal) */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: var(--card-bg);
+            padding: 20px; border-radius: 12px;
+            width: 90%; max-width: 400px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .close-btn {
+            background-color: transparent; color: var(--danger);
+            border: none; text-align: right; padding: 0;
+            font-size: 16px; margin-bottom: 10px; font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     
-    <!-- BAHAGIAN 1: LOG MASUK (PIN) -->
     <div id="login-section" class="card">
         <h2>Kewangan Keluarga</h2>
         <p>Sila masukkan PIN untuk akses</p>
@@ -78,7 +94,6 @@
         <p id="login-status" style="color: red;"></p>
     </div>
 
-    <!-- BAHAGIAN 2: PAPARAN DASHBOARD (Disembunyikan pada asalnya) -->
     <div id="dashboard-section" class="hidden">
         <div class="header">
             <h3 id="user-role">Profil: Pengguna</h3>
@@ -90,37 +105,59 @@
             <h1 id="baki-semasa">RM 0.00</h1>
         </div>
 
-        <!-- Kad Dana & Tabungan (Bergantung pada Role) -->
         <div class="card">
             <h3>Status Dana Terkumpul</h3>
             <ul style="list-style: none; padding: 0; line-height: 1.8;" id="senarai-dana">
-                <!-- Data akan dimasukkan oleh JavaScript -->
-            </ul>
+                </ul>
         </div>
 
-        <!-- Butang Tindakan Pengguna Biasa -->
         <div id="tindakan-user" class="card hidden">
             <h3>Rekod Transaksi</h3>
-            <button class="btn-accent" onclick="bukaModal('Bayar Hutang', 500)">+ Bayar Hutang (RM500)</button>
-            <button onclick="alert('Borang tambah pendapatan/perbelanjaan akan dibuka')">Catat Perbelanjaan / Pendapatan</button>
+            <button class="btn-accent" onclick="bukaModalTransaksi('Bayar Hutang')">+ Bayar Hutang (RM500)</button>
+            <button onclick="bukaModalTransaksi('Perbelanjaan')">Catat Perbelanjaan / Pendapatan</button>
         </div>
 
-        <!-- Butang Tindakan Admin (Abah) -->
         <div id="tindakan-admin" class="card hidden">
             <h3>Panel Kawalan Abah</h3>
             <button class="btn-danger" onclick="alert('Borang pengeluaran dana akan dibuka')">- Rekod Pengeluaran Dana</button>
             <button onclick="alert('Fungsi cetak dan reset akan dijalankan')">Urus Sistem & Cetak PDF</button>
         </div>
-        
     </div>
-
 </div>
 
+<div id="modal-transaksi" class="modal hidden">
+    <div class="modal-content">
+        <button class="close-btn" onclick="tutupModal()">✖ Batal</button>
+        <h3 id="tajuk-modal">Catat Transaksi</h3>
+        
+        <label>Jenis:</label>
+        <select id="input-jenis" onchange="kemasKiniKategori()">
+            <option value="Perbelanjaan">Perbelanjaan (Keluar)</option>
+            <option value="Pendapatan">Pendapatan (Masuk)</option>
+            <option value="Bayar Hutang">Bayar Hutang Abah</option>
+        </select>
+
+        <label>Kategori:</label>
+        <select id="input-kategori">
+            </select>
+
+        <label>Jumlah (RM):</label>
+        <input type="number" id="input-jumlah" placeholder="Contoh: 50.00" step="0.01">
+
+        <label>Nota Ringkas:</label>
+        <input type="text" id="input-nota" placeholder="Contoh: Beli barang dapur">
+
+        <button class="btn-accent" onclick="hantarDataTransaksi()" id="btn-hantar">Simpan Rekod</button>
+        <p id="status-hantar" style="text-align:center; font-size:14px; margin-top:10px;"></p>
+    </div>
+</div>    
+
 <script>
-    // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI
+    // URL WEB APP GAS
     const GAS_URL = "https://script.google.com/macros/s/AKfycbybsw0VFwZhmtzDF9sYae9KYkdUROpgV5JyKMWnJLjXhFiW4myZ_l1Q8UadnXcBvnw/exec"; 
     
     let pinSemasa = "";
+    let senaraiKategoriGlobal = []; // Simpan sementara kategori dari GAS
 
     function logMasuk() {
         const pin = document.getElementById('pin-input').value;
@@ -133,7 +170,6 @@
 
         statusText.innerText = "Memeriksa akses...";
         
-        // Panggil data dari GAS (Fungsi doGet)
         fetch(`${GAS_URL}?pin=${pin}&action=getData`)
             .then(response => response.json())
             .then(data => {
@@ -150,18 +186,14 @@
     }
 
     function paparDashboard(data) {
-        // Sembunyikan Login, Papar Dashboard
         document.getElementById('login-section').classList.add('hidden');
         document.getElementById('dashboard-section').classList.remove('hidden');
         
-        // Tetapkan Profil
-        const peranan = data.peranan; // 'ADMIN' atau 'USER'
+        const peranan = data.peranan;
         document.getElementById('user-role').innerText = peranan === "ADMIN" ? "👑 Panel Kawalan Abah" : "👤 Hasif & Fatini";
         
-        // Masukkan Data Baki Semasa
         document.getElementById('baki-semasa').innerText = "RM " + (data.ringkasan["Baki Semasa"] || "0.00");
 
-        // Masukkan Data Tabung
         const senaraiDana = document.getElementById('senarai-dana');
         senaraiDana.innerHTML = `
             <li>🚗 Servis Veloz: <b>RM ${data.ringkasan["Dana Servis Veloz"] || 0}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
@@ -171,12 +203,13 @@
             <li style="color: var(--accent); font-size: 18px; margin-top: 10px;">💰 <b>Tabungan Masa Depan: RM ${data.ringkasan["Tabungan Masa Depan"] || 0}</b> ${peranan === 'USER' ? '🔒' : ''}</li>
         `;
 
-        // Tunjukkan panel kawalan mengikut peranan
         if(peranan === "ADMIN") {
             document.getElementById('tindakan-admin').classList.remove('hidden');
         } else {
             document.getElementById('tindakan-user').classList.remove('hidden');
         }
+
+        senaraiKategoriGlobal = data.kategori || [];
     }
 
     function logKeluar() {
@@ -185,10 +218,105 @@
         document.getElementById('login-status').innerText = "";
         document.getElementById('dashboard-section').classList.add('hidden');
         document.getElementById('login-section').classList.remove('hidden');
-        
-        // Sembunyikan semula panel tindakan
         document.getElementById('tindakan-admin').classList.add('hidden');
         document.getElementById('tindakan-user').classList.add('hidden');
+    }
+
+    // --- FUNGSI MENGURUS BORANG POP-UP ---
+    function bukaModalTransaksi(jenisDefault) {
+        document.getElementById('modal-transaksi').classList.remove('hidden');
+        document.getElementById('input-jenis').value = jenisDefault;
+        document.getElementById('status-hantar').innerText = "";
+        
+        if (jenisDefault === "Bayar Hutang") {
+            document.getElementById('input-jumlah').value = "500.00";
+            document.getElementById('input-nota').value = "Bayaran bulanan";
+        } else {
+            document.getElementById('input-jumlah').value = "";
+            document.getElementById('input-nota').value = "";
+        }
+        kemasKiniKategori();
+    }
+
+    function tutupModal() {
+        document.getElementById('modal-transaksi').classList.add('hidden');
+    }
+
+    function kemasKiniKategori() {
+        const jenis = document.getElementById('input-jenis').value;
+        const selectKategori = document.getElementById('input-kategori');
+        selectKategori.innerHTML = ""; 
+        
+        if (jenis === "Bayar Hutang") {
+            selectKategori.innerHTML = '<option value="Kepada Abah">Kepada Abah</option>';
+        } else if (jenis === "Pendapatan") {
+            selectKategori.innerHTML = '<option value="Gaji">Gaji</option><option value="Lain-lain">Lain-lain</option>';
+        } else {
+            if(senaraiKategoriGlobal.length > 0) {
+                senaraiKategoriGlobal.forEach(kat => {
+                    selectKategori.innerHTML += `<option value="${kat.nama}">${kat.nama}</option>`;
+                });
+            } else {
+                selectKategori.innerHTML = '<option value="Lain-lain">Tiada Kategori Ditetapkan</option>';
+            }
+        }
+    }
+
+    // --- FUNGSI MENGHANTAR DATA KE GOOGLE SHEETS ---
+    function hantarDataTransaksi() {
+        const jenis = document.getElementById('input-jenis').value;
+        const kategori = document.getElementById('input-kategori').value;
+        const jumlah = parseFloat(document.getElementById('input-jumlah').value);
+        const nota = document.getElementById('input-nota').value;
+        const statusText = document.getElementById('status-hantar');
+
+        if (!jumlah || jumlah <= 0) {
+            statusText.innerText = "Sila masukkan jumlah yang sah!";
+            statusText.style.color = "red";
+            return;
+        }
+
+        statusText.innerText = "Sedang menyimpan rekod...";
+        statusText.style.color = "blue";
+        document.getElementById('btn-hantar').disabled = true;
+
+        const dataHantar = {
+            action: "tambahTransaksi",
+            pin: pinSemasa,
+            jenis: jenis,
+            kategori: kategori,
+            jumlah: jumlah,
+            nota: nota
+        };
+
+        fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify(dataHantar),
+            // 'text/plain' mengelakkan isu CORS Preflight pada pelayan Google
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === "SUCCESS") {
+                statusText.innerText = "Berjaya disimpan!";
+                statusText.style.color = "green";
+                setTimeout(() => {
+                    tutupModal();
+                    document.getElementById('btn-hantar').disabled = false;
+                    // Auto-refresh data dari server
+                    logMasuk();
+                }, 1500);
+            } else {
+                statusText.innerText = "Ralat: " + data.message;
+                statusText.style.color = "red";
+                document.getElementById('btn-hantar').disabled = false;
+            }
+        })
+        .catch(error => {
+            statusText.innerText = "Gagal berhubung dengan pelayan.";
+            statusText.style.color = "red";
+            document.getElementById('btn-hantar').disabled = false;
+        });
     }
 </script>
 
